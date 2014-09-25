@@ -7,14 +7,22 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.*;
+import org.apache.hadoop.util.ReflectionUtils;
 
 public class App {
 
     /*--------------------------------------------------------------------------------------------*/
     String[] DATA = {
-        "one, first line", "two, second line", "tree, third line",
-        "four, forth line", "five, fifth line", "six, sixth line",
-        "four, forth line", "five, fifth line", "six, sixth line",};
+          "key1|one"
+	, "key2|two"
+	, "key3|three"
+	, "key4|four"
+	, "key9|nine"
+	, "key5|five"
+	, "key6|six"
+	, "key7|seven"
+	, "key8|eight"
+	};
 
     static String uri;
     static Configuration conf;
@@ -36,6 +44,8 @@ public class App {
         
         App app = new App();        
         app.key_val_bytes();
+	app.key_val_reader();
+
     }
 
     /*--------------------------------------------------------------------------------------------*/
@@ -52,6 +62,8 @@ public class App {
             for (int i = 0; i < DATA.length; i++) {
 
                 String[] parts = DATA[i].split(",");
+                value.set(DATA[i]);
+
                 writer.append(new BytesWritable(parts[0].getBytes()), value);
 
             }
@@ -121,4 +133,30 @@ public class App {
         }
     }
     /*--------------------------------------------------------------------------------------------*/
+    public void key_val_reader() throws IOException {
+
+        SequenceFile.Reader reader = null;
+
+        try {
+
+            reader = new SequenceFile.Reader(fs, path, conf);
+            Writable key = (Writable) ReflectionUtils.newInstance(reader.getKeyClass(), conf);
+            Writable value = (Writable) ReflectionUtils.newInstance(reader.getValueClass(), conf);
+            long position = reader.getPosition();
+
+            while (reader.next(key, value)) {
+
+                String syncSeen = reader.syncSeen() ? "*" : "";
+                System.out.printf("[%s%s]\t%s\t%s\n", position, syncSeen, key, value);
+                position = reader.getPosition();
+            }
+
+        } catch (Exception ex) {
+            System.out.println("ex = " + ex);
+        } finally {
+            IOUtils.closeStream(reader);
+        }
+    }
+    /*--------------------------------------------------------------------------------------------*/
+
 }
